@@ -232,7 +232,7 @@ const buildEffectiveCartPricing = ({
       deliveryFee: Number.isFinite(serverDeliveryFee) ? serverDeliveryFee : 0,
       deliveryFeeGst: Number.isFinite(serverDeliveryFeeGst)
         ? serverDeliveryFeeGst
-        : computeDeliveryFeeGst(Number.isFinite(serverDeliveryFee) ? serverDeliveryFee : 0),
+        : computeDeliveryFeeGst(Number.isFinite(serverDeliveryFee) ? serverDeliveryFee : 0, feeSettings?.deliveryFeeGstRate),
       platformFee: Number.isFinite(serverPlatformFee) ? serverPlatformFee : 0,
       quickDeliveryFee,
       discount: Number.isFinite(serverDiscount) ? serverDiscount : 0,
@@ -249,7 +249,7 @@ const buildEffectiveCartPricing = ({
 
   // Mirror of backend order-pricing: discount clamped to subtotal, GST on post-discount base.
   const deliveryFee = fallbackDeliveryFee
-  const deliveryFeeGst = computeDeliveryFeeGst(deliveryFee)
+  const deliveryFeeGst = computeDeliveryFeeGst(deliveryFee, feeSettings?.deliveryFeeGstRate)
   const basePlatformFee = Number(feeSettings.platformFee || 0)
   const quickDeliveryFee = deliveryMode === "quick" ? getConfiguredQuickDeliveryFee(feeSettings) : 0
   const platformFee = basePlatformFee + quickDeliveryFee
@@ -1483,7 +1483,7 @@ export default function Cart() {
   const deliveryFee = effectivePricing.deliveryFee
   const deliveryFeeGst = effectivePricing.deliveryFeeGst != null
     ? resolveDeliveryFeeGst(deliveryFee, effectivePricing.deliveryFeeGst)
-    : computeDeliveryFeeGst(deliveryFee)
+    : computeDeliveryFeeGst(deliveryFee, feeSettings?.deliveryFeeGstRate)
   const quickDeliveryFee = effectivePricing.quickDeliveryFee || 0
   const deliveryFeeBreakdown = effectivePricing.deliveryFeeBreakdown
   const displayDistanceKm = Number.isFinite(Number(deliveryFeeBreakdown?.distanceKm))

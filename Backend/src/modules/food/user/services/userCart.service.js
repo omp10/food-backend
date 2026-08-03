@@ -16,12 +16,17 @@ const toNonNegativeNumber = (value, fallback = 0) => {
     return parsed;
 };
 
+/**
+ * The delivery-fee GST a stored cart already recorded.
+ *
+ * This used to invent 18% whenever the stored value was zero, which is a second
+ * home for a rate that belongs in the fee settings — and it would have silently
+ * put the charge back on every cart the moment it was switched off there. A
+ * stored zero now means zero.
+ */
 const resolveStoredDeliveryFeeGst = (deliveryFee, deliveryFeeGst) => {
-    const base = toNonNegativeNumber(deliveryFee, 0);
-    if (base <= 0) return 0;
-    const stored = toNonNegativeNumber(deliveryFeeGst, 0);
-    if (stored > 0) return stored;
-    return Math.round(base * 0.18 * 100) / 100;
+    if (toNonNegativeNumber(deliveryFee, 0) <= 0) return 0;
+    return toNonNegativeNumber(deliveryFeeGst, 0);
 };
 
 const normalizeCartItems = (items = []) => {

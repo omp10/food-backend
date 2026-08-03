@@ -19,13 +19,24 @@ import { resolveOrderCartItems } from '../helpers/order-cart-items.helper.js';
 
 const round2 = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
-/** Fixed 18% GST on delivery fee (separate from item GST in fee settings). */
-export const DELIVERY_FEE_GST_RATE = 0.18;
+/**
+ * GST on the delivery fee, at the rate the admin configured.
+ *
+ * This used to be a hardcoded 18% that nothing exposed and no one could switch
+ * off — it was folded silently into the total, so customers paid it without a
+ * line item ever naming it. It is now `deliveryFeeGstRate` in the fee settings
+ * alongside the item GST rate, and unset means not charged.
+ */
+export function resolveDeliveryFeeGstRate(feeSettings = {}) {
+  const rate = Number(feeSettings.deliveryFeeGstRate);
+  return Number.isFinite(rate) && rate > 0 ? rate : 0;
+}
 
-export function computeDeliveryFeeGst(deliveryFee) {
+export function computeDeliveryFeeGst(deliveryFee, ratePercent = 0) {
   const base = Math.max(0, Number(deliveryFee) || 0);
-  if (base <= 0) return 0;
-  return round2(base * DELIVERY_FEE_GST_RATE);
+  const rate = Number(ratePercent);
+  if (base <= 0 || !Number.isFinite(rate) || rate <= 0) return 0;
+  return round2((base * rate) / 100);
 }
 
 const applyDeliveryModePricing = (pricing, deliveryMode, quickSurcharge = 0) => {
@@ -463,7 +474,8 @@ export async function calculateOrderPricing(userId, dto, options = {}) {
       ? Math.round(Math.max(0, subtotal - discount) * (gstRate / 100))
       : 0;
 
-  const deliveryFeeGst = computeDeliveryFeeGst(deliveryFee);
+  const deliveryFeeGstRate = resolveDeliveryFeeGstRate(feeSettings);
+  const deliveryFeeGst = computeDeliveryFeeGst(deliveryFee, deliveryFeeGstRate);
 
   const total = round2(
     Math.max(
@@ -484,7 +496,7 @@ export async function calculateOrderPricing(userId, dto, options = {}) {
     // The rates behind `tax` and `deliveryFeeGst`, so the apps can label the
     // bill rows ("GST (5%)") instead of showing a bare rupee figure.
     gstRate,
-    deliveryFeeGstRate: DELIVERY_FEE_GST_RATE * 100,
+    deliveryFeeGstRate,
     currency: "INR",
     couponCode: appliedCoupon?.code || codeRaw || null,
     appliedCoupon,

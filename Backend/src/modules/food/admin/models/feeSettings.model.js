@@ -19,6 +19,10 @@ const feeSettingsSchema = new mongoose.Schema(
         platformFee: { type: Number, min: 0 },
         quickDeliveryFee: { type: Number, min: 0 },
         gstRate: { type: Number, min: 0, max: 100 },
+        // GST charged on the delivery fee. Was a hardcoded 18% in the pricing
+        // code that no one could see or switch off; unset means it is not
+        // charged at all.
+        deliveryFeeGstRate: { type: Number, min: 0, max: 100 },
         isActive: { type: Boolean, default: true, index: true }
     },
     { collection: 'food_fee_settings', timestamps: true }

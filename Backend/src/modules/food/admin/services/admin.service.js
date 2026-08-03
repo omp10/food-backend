@@ -2241,6 +2241,13 @@ export async function upsertFeeSettings(body) {
         if (body.gstRate === null) $unset.gstRate = 1;
         else if (body.gstRate !== undefined) $set.gstRate = body.gstRate;
 
+        // Cleared or left blank means the delivery fee is not taxed at all.
+        if (body.deliveryFeeGstRate === null || body.deliveryFeeGstRate === undefined) {
+            $unset.deliveryFeeGstRate = 1;
+        } else {
+            $set.deliveryFeeGstRate = body.deliveryFeeGstRate;
+        }
+
         if (body.isActive !== undefined) $set.isActive = body.isActive;
 
         const update = {};
@@ -2260,6 +2267,9 @@ export async function upsertFeeSettings(body) {
     if (body.platformFee !== undefined && body.platformFee !== null) payload.platformFee = body.platformFee;
     if (body.quickDeliveryFee !== undefined && body.quickDeliveryFee !== null) payload.quickDeliveryFee = body.quickDeliveryFee;
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
+    if (body.deliveryFeeGstRate !== undefined && body.deliveryFeeGstRate !== null) {
+        payload.deliveryFeeGstRate = body.deliveryFeeGstRate;
+    }
 
     console.log('[DEBUG] Creating NEW settings with payload:', JSON.stringify(payload, null, 2));
     const created = await FoodFeeSettings.create(payload);
