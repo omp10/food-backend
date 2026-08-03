@@ -153,6 +153,22 @@ function widestBandFee(feeSettings = {}) {
   return Number(widest.fee);
 }
 
+/**
+ * How far the platform actually delivers, in km.
+ *
+ * Taken from the widest configured band rather than a separate setting: the
+ * bands are the only place a price exists for a distance, so a trip past the
+ * last one is by definition a trip nobody has priced. Null when no bands are
+ * configured — then there is nothing to derive a limit from and no limit is
+ * enforced.
+ */
+export function serviceableRadiusKm(feeSettings = {}) {
+  const maxima = deliveryFeeBands(feeSettings)
+    .map((range) => Number(range?.max))
+    .filter((max) => Number.isFinite(max) && max > 0);
+  return maxima.length > 0 ? Math.max(...maxima) : null;
+}
+
 function matchFeeRange(ranges, distanceKm, pickValue) {
   if (!Array.isArray(ranges) || ranges.length === 0 || !Number.isFinite(distanceKm)) {
     return null;
@@ -331,6 +347,23 @@ export async function calculateOrderPricing(userId, dto, options = {}) {
 
   let distanceKm = await getDeliveryDistanceKm(restaurant, deliveryAddress);
   const straightLineKm = calculateDistanceKm(restaurant, deliveryAddress);
+
+  // Nothing stopped a customer ordering from a restaurant on the other side of
+  // the country — one live order ran 999 km from a Punjab kitchen to an Indore
+  // address, priced off the end of the bands. Refuse the order rather than
+  // quote a fee for a delivery that cannot happen.
+  //
+  // Skipped when the distance is unknown (no address yet, or a restaurant with
+  // no coordinates): an unknown distance is not evidence of a long one, and
+  // blocking on it would break carts that are simply not ready to be priced.
+  const radiusKm = serviceableRadiusKm(feeSettings);
+  if (Number.isFinite(distanceKm) && radiusKm != null && distanceKm > radiusKm) {
+    throw new ValidationError(
+      `${restaurant.restaurantName || 'This restaurant'} is ${distanceKm.toFixed(
+        1,
+      )} km away and only delivers within ${radiusKm} km. Please choose a closer restaurant or a different address.`,
+    );
+  }
 
   const deliveryFeeResult = resolveUserDeliveryFee(feeSettings, { subtotal, distanceKm });
   const deliveryFee = round2(deliveryFeeResult.deliveryFee);
