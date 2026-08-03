@@ -416,6 +416,10 @@ export async function calculateOrderPricing(userId, dto, options = {}) {
     platformFee,
     discount,
     total,
+    // The rates behind `tax` and `deliveryFeeGst`, so the apps can label the
+    // bill rows ("GST (5%)") instead of showing a bare rupee figure.
+    gstRate,
+    deliveryFeeGstRate: DELIVERY_FEE_GST_RATE * 100,
     currency: "INR",
     couponCode: appliedCoupon?.code || codeRaw || null,
     appliedCoupon,
