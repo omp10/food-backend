@@ -12,11 +12,9 @@ const toGeoPoint = ({ latitude, longitude }) => {
 };
 
 const normalizeLabel = (label) => {
-    const v = String(label || '').trim();
-    if (v === 'Work') return 'Office';
-    if (v === 'home' || v === 'Home') return 'Home';
-    if (v === 'office' || v === 'Office') return 'Office';
-    if (v === 'other' || v === 'Other') return 'Other';
+    const v = String(label || '').trim().toLowerCase();
+    if (v === 'home' || v === 'house' || v === 'flat') return 'Home';
+    if (v === 'office' || v === 'work') return 'Office';
     return 'Other';
 };
 
@@ -42,21 +40,11 @@ export const addAddress = async (userId, dto) => {
         isDefault: false
     };
 
-    // If same label exists, update-in-place (keeps "Home/Office/Other" single entry best UX)
-    const existingIdx = user.addresses.findIndex((a) => String(a?.label) === String(address.label));
-    if (existingIdx >= 0) {
-        const existing = user.addresses[existingIdx];
-        existing.label = address.label;
-        existing.street = address.street;
-        existing.additionalDetails = address.additionalDetails;
-        existing.city = address.city;
-        existing.state = address.state;
-        existing.zipCode = address.zipCode;
-        existing.phone = address.phone;
-        if (address.location) existing.location = address.location;
-        await user.save();
-        return { address: normalizeDeliveryAddress(existing.toObject()) };
-    }
+    // Adding used to overwrite any existing address carrying the same label, on
+    // the theory that a customer wants one Home and one Office. With only three
+    // labels that capped everyone at three addresses and silently destroyed the
+    // old one — saving a second "Other" wiped the first with no warning. Adding
+    // now always adds; editing an address is what PATCH is for.
 
     // First address becomes default automatically
     if (!user.addresses.some((a) => a.isDefault)) {

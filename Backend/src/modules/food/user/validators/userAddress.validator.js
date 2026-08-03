@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { ValidationError } from '../../../../core/auth/errors.js';
 
-const labelSchema = z.enum(['Home', 'Office', 'Other']).default('Home');
+// Any label is accepted here; the service's normalizeLabel folds it onto the
+// three the schema stores. Rejecting outright meant the apps had to know the
+// exact wording — the user app's "House" chip 400'd, so those customers could
+// not save an address at all.
+const labelSchema = z.string().trim().max(50).default('Home');
 
 const coordSchema = z
     .number()
