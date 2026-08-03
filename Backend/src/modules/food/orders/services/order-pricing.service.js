@@ -114,23 +114,43 @@ export async function getDeliveryDistanceKm(restaurant, deliveryAddress) {
 
 // Single money-rounding rule (2 decimals) so preview and charged totals always match.
 
+const deliveryFeeBands = (feeSettings = {}) =>
+  (Array.isArray(feeSettings.deliveryFeeRanges) ? feeSettings.deliveryFeeRanges : []).filter(
+    (range) => Number.isFinite(Number(range?.fee)) && Number(range.fee) >= 0,
+  );
+
+/**
+ * The fee to charge when the distance bands cannot decide.
+ *
+ * Configured bands always win now. The flat `deliveryFee` used to take priority
+ * over them, which is how a fee higher than every band ended up on carts whose
+ * distance was not known yet — a number no band would ever have produced. The
+ * flat fee is only a fallback for the case it was meant for: no bands set up at
+ * all.
+ *
+ * With bands present the cheapest one is the honest pre-address estimate; the
+ * real distance replaces it as soon as an address is picked.
+ */
 function resolveBaseDeliveryFee(feeSettings = {}) {
-  const ranges = Array.isArray(feeSettings.deliveryFeeRanges)
-    ? feeSettings.deliveryFeeRanges
-    : [];
-  const rangeFees = ranges
-    .map((range) => Number(range?.fee))
-    .filter((fee) => Number.isFinite(fee) && fee >= 0);
-
-  const flat = Number(feeSettings.deliveryFee);
-  const hasPositiveFlat = Number.isFinite(flat) && flat > 0;
-
-  if (rangeFees.length > 0) {
-    const minRangeFee = Math.min(...rangeFees);
-    return hasPositiveFlat ? flat : minRangeFee;
+  const bands = deliveryFeeBands(feeSettings);
+  if (bands.length > 0) {
+    return Math.min(...bands.map((range) => Number(range.fee)));
   }
 
+  const flat = Number(feeSettings.deliveryFee);
   return Number.isFinite(flat) && flat >= 0 ? flat : 0;
+}
+
+/**
+ * A trip longer than every configured band still has to be priced. Charging the
+ * cheapest band for it would undercharge the longest deliveries, so use the
+ * widest band — the same fallback calculateRiderEarning already uses for pay.
+ */
+function widestBandFee(feeSettings = {}) {
+  const bands = deliveryFeeBands(feeSettings);
+  if (bands.length === 0) return null;
+  const widest = [...bands].sort((a, b) => Number(a?.max ?? 0) - Number(b?.max ?? 0)).pop();
+  return Number(widest.fee);
 }
 
 function matchFeeRange(ranges, distanceKm, pickValue) {
@@ -186,6 +206,18 @@ export function resolveUserDeliveryFee(feeSettings = {}, { subtotal = 0, distanc
         deliveryFee: matchedFee,
         distanceKm: Number(distanceKm.toFixed(2)),
         source: 'distance',
+      };
+    }
+  }
+
+  // Distance known but past the last band — price it as the longest band.
+  if (Number.isFinite(distanceKm)) {
+    const overRangeFee = widestBandFee(feeSettings);
+    if (overRangeFee != null) {
+      return {
+        deliveryFee: overRangeFee,
+        distanceKm: Number(distanceKm.toFixed(2)),
+        source: 'distance_over_range',
       };
     }
   }
