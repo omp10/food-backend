@@ -2181,13 +2181,52 @@ export const listApprovedRestaurants = async (query = {}) => {
     };
 };
 
+/**
+ * The only restaurant fields an unauthenticated caller may receive.
+ *
+ * This endpoint returned the entire document, so anyone holding a restaurant id
+ * could read that restaurant's bank account number, IFSC, PAN number and a URL
+ * to the scan of the PAN card, plus the owner's name, email and phone and their
+ * FCM device tokens. No credentials were needed.
+ *
+ * An allowlist rather than a deny-list, deliberately. The failure mode here is
+ * silent -- nothing errors, the response merely contains too much -- so the
+ * default for a field nobody has thought about has to be "withheld". A
+ * deny-list leaks every sensitive field added to the schema after it is
+ * written, which is exactly how a shop-details document came to carry banking
+ * credentials in the first place.
+ *
+ * Withheld beyond the obvious credentials: onboardingFeePayment* (one of them
+ * is a Razorpay signature), subscription amounts, upiQrImage and businessModel.
+ * The last two are read only by the admin panel and the seller's own pages,
+ * which authenticate and use different endpoints.
+ *
+ * `location` is selected whole because the customer app reads latitude,
+ * longitude and formattedAddress from inside it. outletTimings is attached
+ * after this query and so is unaffected by the projection.
+ */
+const PUBLIC_RESTAURANT_SELECT = [
+    '_id', 'restaurantName', 'restaurantNameNormalized', 'status',
+    'profileImage', 'coverImage', 'coverImages', 'galleryImages', 'menuImages',
+    'cuisines', 'rating', 'totalRatings', 'menu', 'offer',
+    'featuredDish', 'featuredPrice', 'pureVegRestaurant', 'diningSettings',
+    'addressLine1', 'addressLine2', 'area', 'city', 'state', 'pincode',
+    'landmark', 'location', 'zoneId',
+    'estimatedDeliveryTime', 'estimatedDeliveryTimeMinutes',
+    'isAcceptingOrders', 'openingTime', 'closingTime', 'openDays',
+    'outsideHoursOverride',
+    'createdAt', 'updatedAt', 'approvedAt', 'rejectedAt',
+].join(' ');
+
 export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
     const value = String(idOrSlug || '').trim();
     if (!value) return null;
 
     // ObjectId path
     if (/^[0-9a-fA-F]{24}$/.test(value)) {
-        const doc = await FoodRestaurant.findOne({ _id: value, status: 'approved' }).lean();
+        const doc = await FoodRestaurant.findOne({ _id: value, status: 'approved' })
+            .select(PUBLIC_RESTAURANT_SELECT)
+            .lean();
         if (!doc) return null;
         const [withTimings] = await attachOutletTimingsToRestaurants([
             normalizePublicRestaurantGeo(
@@ -2208,7 +2247,9 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
     const doc = await FoodRestaurant.findOne({
         status: 'approved',
         restaurantNameNormalized
-    }).lean();
+    })
+        .select(PUBLIC_RESTAURANT_SELECT)
+        .lean();
     if (!doc) return null;
     const [withTimings] = await attachOutletTimingsToRestaurants([
         normalizePublicRestaurantGeo(
