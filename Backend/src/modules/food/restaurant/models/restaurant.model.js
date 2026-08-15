@@ -350,6 +350,22 @@ const restaurantSchema = new mongoose.Schema(
       type: Date,
     },
     /**
+     * Excludes this seller from monthly subscription invoicing.
+     *
+     * The billing catch-up bills every approved seller with GMV in a closed
+     * month, and deleting an unwanted invoice only means it is regenerated on
+     * the next run.
+     *
+     * A seller on a bespoke arrangement, in a trial, or in a dispute needs this
+     * exemption; the alternative was unapproving them, which also takes away
+     * their ability to trade.
+     */
+    billingExempt: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    /**
      * Bumped on every successful login, and embedded in the JWT that login issues.
      * A token whose version is behind the stored one is rejected, so signing in on
      * a new device silently invalidates every older device rather than leaving the
