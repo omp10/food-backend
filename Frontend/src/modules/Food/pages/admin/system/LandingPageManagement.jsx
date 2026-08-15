@@ -352,7 +352,7 @@ export default function LandingPageManagement() {
    * thing a banner upload carries, and a slow connection can spend minutes on
    * one before the server says no.
    */
-  const MAX_BANNER_MB = 25
+  const MAX_BANNER_MB = 50
 
   const oversizedFile = (files) =>
     files.find((file) => file.size > MAX_BANNER_MB * 1024 * 1024)
@@ -1467,7 +1467,7 @@ export default function LandingPageManagement() {
                 <input
                   ref={topBannersFileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
                   multiple
                   onChange={handleTopBannerFileSelect}
                   className="hidden"
@@ -1614,7 +1614,7 @@ export default function LandingPageManagement() {
                 <input
                   ref={bannersFileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
                   multiple
                   onChange={handleBannerFileSelect}
                   className="hidden"
@@ -1760,7 +1760,7 @@ export default function LandingPageManagement() {
                 <input
                   ref={under250BannersFileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
                   multiple
                   onChange={handleUnder250BannerFileSelect}
                   className="hidden"
@@ -1876,7 +1876,7 @@ export default function LandingPageManagement() {
                 <input
                   ref={diningBannersFileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
                   multiple
                   onChange={handleDiningBannerFileSelect}
                   className="hidden"
