@@ -2218,9 +2218,16 @@ const PUBLIC_RESTAURANT_SELECT = [
     'createdAt', 'updatedAt', 'approvedAt', 'rejectedAt',
 ].join(' ');
 
-export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
+export const getApprovedRestaurantByIdOrSlug = async (idOrSlug, query = {}) => {
     const value = String(idOrSlug || '').trim();
     if (!value) return null;
+
+    // The list endpoint attaches distanceInKm, but this one had no user
+    // coordinates to measure from, so the app's detail header fell back to 0
+    // and rendered "0.0 km". Same Haversine the list uses; `location` is
+    // already in PUBLIC_RESTAURANT_SELECT, so nothing extra is exposed.
+    const lat = toFiniteNumber(query.lat);
+    const lng = toFiniteNumber(query.lng);
 
     // ObjectId path
     if (/^[0-9a-fA-F]{24}$/.test(value)) {
@@ -2235,6 +2242,8 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
                     rating: normalizeRatingValue(doc.rating),
                     totalRatings: normalizeTotalRatingsValue(doc.totalRatings),
                 }),
+                lat,
+                lng,
             ),
         ]);
         return withTimings;
@@ -2258,6 +2267,8 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
                 rating: normalizeRatingValue(doc.rating),
                 totalRatings: normalizeTotalRatingsValue(doc.totalRatings),
             }),
+            lat,
+            lng,
         ),
     ]);
     return withTimings;
